@@ -24,46 +24,24 @@ type commit struct {
 	Message string `xml:"message"`
 }
 
+// https://itnext.io/how-to-create-your-own-cli-with-golang-3c50727ac608
+func main() {
+	app := cli.NewApp()
+	info(app)
+	flags(app)
+	commands(app)
+
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func info(app *cli.App) {
 	app.Name = "Daily Standup Helper CLI"
 	app.Usage = "Reports git history"
 	app.Author = "github.com/Lebonesco"
 	app.Version = "1.0.0"
-}
-
-func commands(app *cli.App) {
-	app.Action = func(c *cli.Context) error {
-		dir := c.String("dir")
-		after := c.String("after")
-
-		user := c.String("user")
-		if len(user) == 0 {
-			return fmt.Errorf("no 'user' flag value provided")
-		}
-
-		commits, err := getGitHistory(dir, user, after)
-		if err != nil {
-			return err
-		}
-
-		f, err := os.Create("standup.json")
-		if err != nil {
-			return err
-		}
-
-		prettyJSON, err := json.MarshalIndent(commits, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		_, err = f.Write(prettyJSON)
-		if err != nil {
-			return err
-		}
-
-		log.Println("completed...")
-		return nil
-	}
 }
 
 func flags(app *cli.App) {
@@ -86,6 +64,49 @@ func flags(app *cli.App) {
 			Usage: "when to start looking at commit history",
 		},
 	}
+}
+
+func commands(app *cli.App) {
+	app.Action = func(c *cli.Context) error {
+		dir := c.String("dir")
+		after := c.String("after")
+
+		user := c.String("user")
+		if len(user) == 0 {
+			return fmt.Errorf("no 'user' flag value provided")
+		}
+
+		err := runClient(dir, user, after)
+		if err != nil {
+			return err
+		}
+
+		log.Println("completed...")
+		return nil
+	}
+}
+
+func runClient(dir, user, after string) error {
+	commits, err := getGitHistory(dir, user, after)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Create("standup.json")
+	if err != nil {
+		return err
+	}
+
+	prettyJSON, err := json.MarshalIndent(commits, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Write(prettyJSON)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func getGitHistory(dir, user, after string) ([]commit, error) {
@@ -154,17 +175,4 @@ func getCommits(path, user, after string) ([]byte, error) {
 	}
 
 	return out, nil
-}
-
-// https://itnext.io/how-to-create-your-own-cli-with-golang-3c50727ac608
-func main() {
-	app := cli.NewApp()
-	info(app)
-	flags(app)
-	commands(app)
-
-	err := app.Run(os.Args)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
