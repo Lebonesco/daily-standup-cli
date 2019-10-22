@@ -24,6 +24,8 @@ type commit struct {
 	Message string `xml:"message"`
 }
 
+var verbose = false
+
 // https://itnext.io/how-to-create-your-own-cli-with-golang-3c50727ac608
 func main() {
 	app := cli.NewApp()
@@ -62,6 +64,11 @@ func flags(app *cli.App) {
 			Name:  "after, a",
 			Value: time.Now().Add(-24 * time.Hour).Format("2006-01-02T15:04:05"),
 			Usage: "when to start looking at commit history",
+		},
+		cli.StringFlag{
+			Name:  "verbose",
+			Value: "false",
+			Usage: "set to true to get verbose logging",
 		},
 	}
 }
@@ -113,7 +120,7 @@ func getGitHistory(dir, user, after string) ([]commit, error) {
 	var commits []commit
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			return nil
 		}
 
 		if info.Name() == ".git" {
@@ -123,6 +130,7 @@ func getGitHistory(dir, user, after string) ([]commit, error) {
 			}
 
 			if len(b) == 0 {
+				logger("no commits for user %s in project %s", user, getParentDir(path))
 				return nil
 			}
 
@@ -175,4 +183,10 @@ func getCommits(path, user, after string) ([]byte, error) {
 	}
 
 	return out, nil
+}
+
+func logger(format string, a ...interface{}) {
+	// if !verbose {
+	log.Printf(format, a...)
+	// }
 }
