@@ -80,7 +80,18 @@ func commands(app *cli.App) {
 
 		user := c.String("user")
 		if len(user) == 0 {
-			return fmt.Errorf("no 'user' flag value provided")
+			log.Println("no user provided...")
+			log.Println("attempting to use git config user.name")
+			cmd := exec.Command("git", "config", "user.name")
+			out, err := cmd.Output()
+			if err != nil {
+				return fmt.Errorf("when getting name fron git config - %v", err)
+			}
+
+			user = string(out)
+			if len(user) == 0 {
+				return fmt.Errorf("no user name found in git config")
+			}
 		}
 
 		err := runClient(dir, user, after)
@@ -120,7 +131,7 @@ func getGitHistory(dir, user, after string) ([]commit, error) {
 	var commits []commit
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil
+			return err
 		}
 
 		if info.Name() == ".git" {
@@ -186,7 +197,5 @@ func getCommits(path, user, after string) ([]byte, error) {
 }
 
 func logger(format string, a ...interface{}) {
-	// if !verbose {
 	log.Printf(format, a...)
-	// }
 }
